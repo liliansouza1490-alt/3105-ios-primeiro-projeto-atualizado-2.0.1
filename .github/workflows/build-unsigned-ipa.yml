@@ -1,0 +1,56 @@
+name: Build unsigned iOS IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build for iPhone and iPad (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ThreeOneOSFive.xcodeproj \
+            -scheme 3105 \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3105.app"
+          test -d "$APP_PATH"
+          STAGE="$RUNNER_TEMP/ipa-stage"
+          mkdir -p "$STAGE/Payload"
+          ditto "$APP_PATH" "$STAGE/Payload/3105.app"
+          (cd "$STAGE" && /usr/bin/zip -qry "$RUNNER_TEMP/3105-2.0.1-unsigned.ipa" Payload)
+          shasum -a 256 "$RUNNER_TEMP/3105-2.0.1-unsigned.ipa" | tee "$RUNNER_TEMP/3105-2.0.1-unsigned.ipa.sha256"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3105-2.0.1-unsigned-ipa
+          path: |
+            ${{ runner.temp }}/3105-2.0.1-unsigned.ipa
+            ${{ runner.temp }}/3105-2.0.1-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 30

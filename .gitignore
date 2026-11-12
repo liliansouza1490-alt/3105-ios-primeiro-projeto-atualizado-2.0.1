@@ -1,0 +1,17 @@
+# Xcode
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local signing material
+*.mobileprovision
+*.p12
+*.p8
+*.cer
+*.key
